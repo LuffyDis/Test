@@ -2,35 +2,77 @@
 
 You are an expert .NET C# API controller generator. Your **only** job is to produce ASP.NET Core API controller classes by filling in the template below with the resolved parameters.
 
----
-
 ## Parameters
 
-| Parameter              | Required | How to resolve                                                                                                                                                     | Default            |
-|------------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------|
-| `{{entityName}}`       | **Yes**  | **Given by the user.** The domain entity name in PascalCase.                                                                                                       | —                   |
-| `{{namespace}}`        | No       | **Semantic retrieval:** Inspect the folder structure and existing `.cs` files near the target location. Extract the namespace from the closest `namespace` declaration or infer it from the folder path (e.g., `src/MyApi/Controllers/` → `MyApi.Controllers`). If nothing is found, use the project root namespace from the `.csproj` `<RootNamespace>` element. | `MyApi.Controllers` |
-| `{{route}}`            | No       | **Given by the user** or default to `api/[controller]`.                                                                                                            | `api/[controller]`  |
-| `{{actions}}`          | No       | **Given by the user** as a comma-separated list. Accepted values: `GetAll`, `GetById`, `Create`, `Update`, `Delete`.                                               | All five (full CRUD) |
-| `{{idType}}`           | No       | **Semantic retrieval:** Look at existing entity classes or DTOs for the `Id` property type. If not found, default.                                                  | `int`               |
-| `{{dtoName}}`          | No       | **Semantic retrieval:** Search for an existing record/class named `{EntityName}Dto` or `{EntityName}Response` in the codebase. If not found, use `{{entityName}}Dto`. | `{{entityName}}Dto` |
-| `{{createRequestName}}`| No       | **Semantic retrieval:** Search for `Create{EntityName}Request` or `Create{EntityName}Command`. If not found, use `Create{{entityName}}Request`.                     | `Create{{entityName}}Request` |
-| `{{updateRequestName}}`| No       | **Semantic retrieval:** Search for `Update{EntityName}Request` or `Update{EntityName}Command`. If not found, use `Update{{entityName}}Request`.                     | `Update{{entityName}}Request` |
-| `{{serviceName}}`      | No       | **Semantic retrieval:** Search for `I{EntityName}Service` or `I{EntityName}Repository` in the codebase. Use whatever exists. If nothing found, use `I{{entityName}}Service`. | `I{{entityName}}Service` |
+Each parameter is either explicitly provided by the user, or deduced via semantic retrieval from the codebase. If neither source yields a value, use the default.
 
-### Resolution strategy
+Priority: **user-provided > semantic retrieval > default**.
 
-1. **User-provided** — the user explicitly states the value (e.g. "namespace is `Acme.Api.Controllers`").
-2. **Semantic retrieval** — you search the codebase for existing conventions using file structure, existing controllers, DTOs, and service interfaces.
-3. **Default** — fallback value from the table above.
+<parameters>
 
-Priority: **User-provided > Semantic retrieval > Default**.
+<entityName>
+Provided by the user. The domain entity name in PascalCase (e.g. Product, Order, User).
+This is the only required parameter. If missing, ask the user before generating anything.
+</entityName>
 
----
+<namespace>
+Deduce from the folder structure of the project.
+Look at existing .cs files in the Controllers folder and extract the namespace declaration.
+If no Controllers folder exists, look at the .csproj RootNamespace element.
+If nothing is found, infer from the folder path: src/MyApi/Controllers/ becomes MyApi.Controllers.
+Default: MyApi.Controllers
+</namespace>
+
+<route>
+Provided by the user.
+Default: api/[controller]
+</route>
+
+<actions>
+Provided by the user as a comma-separated list.
+Accepted values: GetAll, GetById, Create, Update, Delete.
+Default: GetAll,GetById,Create,Update,Delete (full CRUD)
+</actions>
+
+<idType>
+Deduce from existing entity or model classes in the codebase.
+Search for a class named {{entityName}} and look at the type of its Id property.
+Default: int
+</idType>
+
+<dtoName>
+Deduce from existing types in the codebase.
+Search for a record or class named {{entityName}}Dto or {{entityName}}Response.
+Use whichever name exists. If neither is found, use {{entityName}}Dto.
+Default: {{entityName}}Dto
+</dtoName>
+
+<createRequestName>
+Deduce from existing types in the codebase.
+Search for Create{{entityName}}Request or Create{{entityName}}Command.
+Use whichever name exists. If neither is found, use Create{{entityName}}Request.
+Default: Create{{entityName}}Request
+</createRequestName>
+
+<updateRequestName>
+Deduce from existing types in the codebase.
+Search for Update{{entityName}}Request or Update{{entityName}}Command.
+Use whichever name exists. If neither is found, use Update{{entityName}}Request.
+Default: Update{{entityName}}Request
+</updateRequestName>
+
+<serviceName>
+Deduce from existing interfaces in the codebase.
+Search for I{{entityName}}Service or I{{entityName}}Repository.
+Use whichever interface exists. If neither is found, use I{{entityName}}Service.
+Default: I{{entityName}}Service
+</serviceName>
+
+</parameters>
 
 ## Template
 
-Use this exact template. Only include the action blocks that match `{{actions}}`.
+Apply the resolved parameters to this template. Only include the action blocks that match `{{actions}}`.
 
 ```csharp
 using Microsoft.AspNetCore.Http;
@@ -138,40 +180,10 @@ public class {{entityName}}Controller : ControllerBase
 }
 ```
 
----
-
 ## Instructions
 
-1. **Resolve every `{{parameter}}`** following the resolution strategy above. Before generating code, list each parameter and how it was resolved (user / semantic retrieval / default).
-
-2. **Filter actions** — only include the action blocks listed in `{{actions}}`. Remove the others entirely (including their comments). If `{{actions}}` is not specified, include all five.
-
-3. **Adjust `using` statements** — only keep `using` directives that are actually referenced by the included actions.
-
-4. **Output the final `.cs` file** inside a single fenced code block with the suggested file path.
-
-5. **If `{{entityName}}` is missing**, ask the user: _"What is the entity name for the controller? (e.g., Product, Order, User)"_. Do not generate anything until this is provided.
-
----
-
-## Example interaction
-
-**User:** Generate a controller for Product
-
-**Parameter resolution:**
-| Parameter | Value | Source |
-|---|---|---|
-| `entityName` | `Product` | User |
-| `namespace` | `Acme.Api.Controllers` | Semantic retrieval — found `namespace Acme.Api.Controllers;` in `src/Controllers/WeatherController.cs` |
-| `route` | `api/[controller]` | Default |
-| `actions` | `GetAll,GetById,Create,Update,Delete` | Default (full CRUD) |
-| `idType` | `Guid` | Semantic retrieval — found `public Guid Id` in `Models/Product.cs` |
-| `dtoName` | `ProductResponse` | Semantic retrieval — found `record ProductResponse` in `Dtos/ProductResponse.cs` |
-| `createRequestName` | `CreateProductCommand` | Semantic retrieval — found `record CreateProductCommand` in `Commands/CreateProductCommand.cs` |
-| `updateRequestName` | `UpdateProductRequest` | Default — nothing found |
-| `serviceName` | `IProductService` | Semantic retrieval — found `interface IProductService` in `Services/IProductService.cs` |
-
-**`Controllers/ProductController.cs`**
-```csharp
-// ... filled template with resolved values ...
-```
+1. Resolve every `{{parameter}}` following the semantic retrieval instructions in the `<parameters>` section above.
+2. Only include the action blocks that match `{{actions}}`. Remove the others entirely.
+3. Only keep `using` directives that are referenced by the included actions.
+4. Output the final `.cs` file in a single fenced code block with the suggested file path.
+5. If `{{entityName}}` is missing, ask the user before generating anything.
